@@ -1,0 +1,424 @@
+Section 1: Security Practices in DevOps (12 Qs)
+
+Q1. What is DevSecOps? Why is it important?
+A: DevSecOps means embedding security into DevOps pipelines. Instead of treating security as a separate phase at the end, we shift security checks left: scanning code, dependencies, container images, infrastructure as code, and enforcing policies during CI/CD. This prevents costly vulnerabilities from reaching production.
+
+Q2. How do you handle secrets in DevOps pipelines?
+A:
+
+Store in secret managers (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault).
+
+Never hardcode in Git or Jenkinsfiles.
+
+Use sealed secrets or External Secrets Operator in K8s.
+
+Rotate regularly, enforce least privilege.
+
+Q3. What are common CI/CD security practices?
+A:
+
+Code scanning (SonarQube, CodeQL).
+
+Dependency scanning (Trivy, OWASP Dependency Check).
+
+Container image scans.
+
+Least privilege for pipeline service accounts.
+
+Enforce signed commits and signed container images (Cosign).
+
+Q4. How do you secure Docker images?
+A:
+
+Use minimal base images.
+
+Run as non-root.
+
+Pin image versions.
+
+Scan regularly.
+
+Enable Docker Content Trust.
+
+Q5. How to implement RBAC in Kubernetes securely?
+A:
+
+Follow principle of least privilege.
+
+Use service accounts per app.
+
+Bind roles tightly (don’t use cluster-admin).
+
+Audit API server requests.
+
+Q6. How do you secure CI/CD agents?
+A:
+
+Run them in isolated environments.
+
+Patch agents frequently.
+
+Rotate credentials.
+
+Restrict plugin usage (in Jenkins).
+
+Q7. How do you protect IaC (Terraform/Helm) from misconfigurations?
+A:
+
+Run Checkov/OPA policies before apply.
+
+Enforce no hardcoded secrets.
+
+Validate tags, networking, security group rules.
+
+Q8. What’s Zero Trust in DevOps?
+A: Never trust, always verify. Every request is authenticated/authorized. Micro-segmentation and least privilege are enforced across the CI/CD pipeline, cloud, and K8s cluster.
+
+Q9. How do you secure logs?
+A:
+
+Mask sensitive data (passwords, tokens).
+
+Encrypt logs in transit and at rest.
+
+Restrict access (role-based dashboards).
+
+Q10. How do you prevent supply chain attacks?
+A:
+
+Verify third-party dependencies.
+
+Sign images/manifests.
+
+Generate SBOM (Syft).
+
+Use admission controllers to block unsigned/unscanned artifacts.
+
+Q11. What’s runtime security in Kubernetes?
+A: Tools like Falco monitor syscalls to detect suspicious behavior (crypto mining, privilege escalation). Alerts can trigger auto-remediation.
+
+Q12. How do you handle vulnerability management in production?
+A:
+
+Patch regularly (automated AMI/image builds).
+
+Automated scanning pipelines.
+
+Prioritize by CVSS score.
+
+Blue/green deployments for safe patch rollouts.
+
+🚨 Section 2: Major Production Issues & Fixes (15 Qs)
+
+Q13. CI/CD pipeline stuck during build — resolution?
+A:
+
+Check worker/agent logs.
+
+Verify repo connectivity.
+
+Kill stale jobs, add timeout directive.
+
+Add caching for dependencies to reduce long builds.
+
+Q14. Frequent pipeline failures due to flaky tests — fix?
+A:
+
+Run tests in containers for consistency.
+
+Separate flaky tests → quarantine.
+
+Add retries in pipeline with backoff.
+
+Q15. Docker image not pulling in Kubernetes — resolution?
+A:
+
+kubectl describe pod → ImagePullBackOff.
+
+Fix image tag mismatch.
+
+Verify registry creds in imagePullSecrets.
+
+Q16. Kubernetes pods in CrashLoopBackOff — how to debug?
+A:
+
+kubectl logs <pod> to check errors.
+
+Readiness probe may be failing → adjust thresholds.
+
+Out-of-memory? → Check kubectl describe pod events.
+
+Solution: fix app config, increase resources, or adjust probe timings.
+
+Q17. Cluster scaling fails — resolution?
+A:
+
+Check cloud provider quota.
+
+Node pool IAM role misconfigured.
+
+Fix autoscaler configuration.
+
+Q18. Production deployment failed mid-way — rollback strategy?
+A:
+
+kubectl rollout undo deployment <name>.
+
+Helm rollback: helm rollback <release>.
+
+If DB migrations involved → use versioned migrations with backward compatibility.
+
+Q19. High pod restarts in monitoring namespace (Prometheus/Grafana) — fix?
+A:
+
+Increase resources.
+
+PersistentVolume misconfigured → fix PVC binding.
+
+Update to stable Helm charts.
+
+Q20. Alert storms (too many alerts) in monitoring — fix?
+A:
+
+Group alerts.
+
+Introduce severity levels.
+
+Add deduplication rules in Alertmanager.
+
+Suppress low-priority alerts during incidents.
+
+Q21. Latency spikes in app — how to debug?
+A:
+
+Check golden signals: latency, error rate, traffic, saturation.
+
+Use tracing (Jaeger) to find bottlenecks.
+
+Investigate DB queries or pod autoscaling.
+
+Q22. Disk full on Jenkins server — resolution?
+A:
+
+Clean old workspaces (workspace cleanup plugin).
+
+Use ephemeral agents.
+
+Rotate logs/artifacts.
+
+Q23. Terraform apply accidentally destroyed infra — prevention?
+A:
+
+Enable -target for scoped changes.
+
+Use terraform plan + peer review.
+
+Enable state locking.
+
+Sentinel/OPA policies for guardrails.
+
+Q24. Expired SSL cert broke production — fix?
+A:
+
+Monitor cert expiry with Prometheus exporter.
+
+Auto-renew with cert-manager in Kubernetes.
+
+Emergency: renew manually via Let’s Encrypt or re-import cert.
+
+Q25. Prometheus eating 100% CPU — resolution?
+A:
+
+Reduce scrape interval.
+
+Limit retention (15d → 7d).
+
+Use remote storage (Thanos, Cortex).
+
+Q26. ArgoCD app OutOfSync repeatedly — fix?
+A:
+
+Check Git repo sync status.
+
+Verify Kubernetes resource drift (manual edits).
+
+Use argocd app diff.
+
+Q27. Network outage between CI/CD and cluster — fix?
+A:
+
+Ensure VPN/peering up.
+
+Fallback: push manifests to Git, ArgoCD pulls (GitOps model).
+
+👨‍💻 Section 3: Experience Difference (5 Qs)
+
+Q28. What distinguishes a 3-yr DevOps engineer vs 12-yr one?
+A:
+
+3-yr:
+
+Hands-on with CI/CD tools.
+
+Can set up pipelines, deploy apps, manage clusters.
+
+Still task/execution-focused.
+
+12-yr:
+
+Solution design & architecture.
+
+Cost optimization.
+
+Handles org-wide scaling, compliance, governance.
+
+Mentors juniors, drives best practices.
+
+Talks to business about trade-offs.
+
+Q29. Example: 3-yr engineer sets up Prometheus; 12-yr engineer designs full observability strategy (SLOs, budgeting, scaling).
+
+Q30. Example: 3-yr engineer automates builds; 12-yr engineer decides migration from Jenkins → GitHub Actions/Argo CD with ROI analysis.
+
+Q31. Example: 3-yr engineer writes Helm chart; 12-yr engineer defines org-wide Helm repo strategy with signed charts.
+
+Q32. Example: 3-yr engineer works on sprint tasks; 12-yr engineer works on roadmaps + leadership + compliance.
+
+🚀 Section 4: ArgoCD Questions (12 Qs)
+
+Q33. What is ArgoCD?
+A: GitOps tool that syncs Kubernetes state with Git repo. Declarative deployments, rollback, drift detection.
+
+Q34. How does ArgoCD differ from Jenkins CD?
+A: Jenkins pushes → cluster. ArgoCD pulls → from Git. Git is the source of truth. Drift detection is automatic.
+
+Q35. How do you sync apps in ArgoCD?
+A: Manual sync or auto-sync (self-heal + prune).
+
+Q36. How do you handle secrets in ArgoCD?
+A: Use SealedSecrets, External Secrets Operator, or Vault plugin. Never commit raw secrets in Git.
+
+Q37. How do you rollback in ArgoCD?
+A: argocd app rollback <app-name> <revision>. Or redeploy older Git commit.
+
+Q38. What’s ArgoCD ApplicationSet?
+A: Allows generating multiple applications dynamically (e.g., same app across multiple clusters/namespaces).
+
+Q39. ArgoCD vs Helmfile?
+A: Helmfile manages multiple Helm charts; ArgoCD can deploy Helmfile definitions. ArgoCD adds GitOps features.
+
+Q40. How do you secure ArgoCD?
+A: Enable SSO (OIDC), RBAC per team, HTTPS/TLS, restrict cluster-admin.
+
+Q41. What happens if someone changes resources manually in cluster?
+A: ArgoCD detects drift → marks app as OutOfSync → can auto-correct.
+
+Q42. How to do multi-cluster management with ArgoCD?
+A: Register clusters (argocd cluster add) → deploy apps per cluster.
+
+Q43. How does ArgoCD handle Helm charts?
+A: Can render Helm directly from repo → apply manifests. Values can be overridden via Git.
+
+Q44. Can ArgoCD be used with Terraform?
+A: Not directly. But Terraform can provision infra, while ArgoCD manages workloads. GitOps infra via Crossplane is possible.
+
+🔑 Section 5: SSL in K8s kubeadm cluster (12 Qs)
+
+Q45. How do you secure apps in Kubernetes with SSL?
+A: Use Ingress with TLS termination. Certificates managed by cert-manager or manually via secrets.
+
+Q46. How to create a TLS secret in K8s?
+
+kubectl create secret tls myapp-tls \
+  --cert=cert.pem \
+  --key=key.pem -n myapp-namespace
+
+
+Q47. How do you apply certs for frontend app in kubeadm cluster?
+
+Create Ingress resource → attach TLS secret.
+
+Update DNS → point domain to ingress controller LB.
+
+Q48. Example Ingress YAML with SSL:
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+spec:
+  tls:
+  - hosts:
+    - frontend.example.com
+    secretName: frontend-tls
+  rules:
+  - host: frontend.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+
+Q49. How do you handle DB TLS certs in Kubernetes?
+
+Mount TLS certs via secrets as volumes/env.
+
+Configure DB client (backend) to trust CA.
+
+Q50. How do you automate SSL cert renewal?
+A: cert-manager with Let’s Encrypt ClusterIssuer.
+
+Q51. Example ClusterIssuer for Let’s Encrypt:
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-key
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+
+
+Q52. How do you confirm if SSL cert is applied?
+
+kubectl describe ingress frontend-ingress
+curl -vk https://frontend.example.com
+
+
+Q53. How do you apply SSL in multi-tier apps (frontend + backend)?
+
+Frontend: Ingress TLS.
+
+Backend API: Internal certs (mtls if required).
+
+DB: TLS connection with secret-mounted certs.
+
+Q54. How do you manage certs for external DBs?
+
+Fetch DB CA cert → store in K8s secret → mount into backend pod.
+
+Q55. What’s the challenge in SSL for microservices?
+
+Managing multiple domains/subdomains.
+
+Wildcard or SAN certs help.
+
+cert-manager automates renewal.
+
+Q56. How do you secure gRPC services in K8s?
+
+Use Ingress with TLS passthrough.
+
+Or terminate TLS at service mesh (Istio/Linkerd).
