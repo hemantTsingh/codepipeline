@@ -1,0 +1,235 @@
+Expect real-world scenario-based questions across CI/CD, Cloud, Kubernetes, Terraform, and DevOps best practices:
+1️⃣ Explain your CI/CD pipeline design. Which tools did you use and why?
+2️⃣ Jenkins multi-environment deployment (dev/stage/prod) – how would you do it?
+3️⃣ Jenkins pipeline failures → Debugging & real-time fix examples.
+4️⃣ Dockerfile best practices → Production-ready approach.
+5️⃣ Kubernetes rolling updates using YAML → Steps and concepts.
+6️⃣ Terraform backend & remote state with locking → Why & how.
+7️⃣ Secrets management → AWS Secrets Manager / Azure Key Vault.
+8️⃣ Git branching strategies → Gitflow in real projects.
+9️⃣ Logging & Monitoring setup → Tools and approach.
+🔟 DevSecOps → Any real-time implementation you’ve done.
+
+
+
+
+
+
+
+
+
+1️⃣ CI/CD pipeline design — tools & why
+
+Flow: Code → Build → Test → Scan → Package → Deploy → Monitor.
+
+Why these tools:
+
+GitHub/GitLab: version control + PR workflow.
+
+Jenkins/GitHub Actions: pipeline orchestration.
+
+Docker: consistent builds.
+
+Kubernetes + Helm: standardized deployments.
+
+Trivy/SonarQube: security & quality gates.
+
+Prometheus + Grafana: post-deployment monitoring.
+
+Example Jenkinsfile (simplified):
+
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        sh 'docker build -t myapp:${BUILD_NUMBER} .'
+      }
+    }
+    stage('Test') {
+      steps {
+        sh 'pytest tests/'
+      }
+    }
+    stage('Scan') {
+      steps {
+        sh 'trivy image myapp:${BUILD_NUMBER}'
+      }
+    }
+    stage('Deploy') {
+      steps {
+        sh 'helm upgrade --install myapp ./charts/myapp --set image.tag=${BUILD_NUMBER}'
+      }
+    }
+  }
+}
+
+2️⃣ Jenkins multi-env deployment
+
+Use branches/tags to decide the environment.
+
+Keep separate values-dev.yaml, values-stage.yaml, values-prod.yaml.
+
+Add approval before prod.
+
+Groovy snippet:
+
+stage('Deploy') {
+  when { branch 'main' }
+  steps {
+    input message: "Deploy to PROD?", ok: "Yes"
+    sh 'helm upgrade --install myapp ./charts -f values-prod.yaml'
+  }
+}
+
+3️⃣ Jenkins failures — debug & fix
+
+Example 1: Build fails due to dependency → Clear cache, check lock file.
+
+Example 2: Deployment stuck → kubectl describe pod shows image pull error → fix image tag or registry creds.
+
+Example 3: Pipeline hangs → Add timeout block in Jenkins.
+
+options {
+  timeout(time: 30, unit: 'MINUTES')
+}
+
+4️⃣ Dockerfile best practices
+
+Use multi-stage builds to keep images small.
+
+Run as non-root.
+
+Add healthcheck.
+
+Example:
+
+FROM node:18 AS build
+WORKDIR /app
+COPY package*.json .
+RUN npm install --production
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+USER 1001
+HEALTHCHECK CMD curl -f http://localhost/ || exit 1
+
+5️⃣ Kubernetes rolling update
+
+Default deployment strategy = RollingUpdate.
+
+Controlled using maxSurge and maxUnavailable.
+
+Steps: update Deployment YAML → kubectl apply → monitor rollout → rollback if needed.
+
+YAML snippet:
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+6️⃣ Terraform backend & state locking
+
+Problem without backend: local state → conflicts, overwrites.
+
+Solution: remote state in S3/GCS/Azure Storage, lock with DynamoDB/Blob leases.
+
+Prevents 2 engineers running terraform apply at the same time.
+
+Backend example:
+
+terraform {
+  backend "s3" {
+    bucket         = "tf-state-prod"
+    key            = "network/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "tf-locks"
+    encrypt        = true
+  }
+}
+
+7️⃣ Secrets management
+
+AWS Secrets Manager: Store DB creds, API keys.
+
+Access: IAM role → app fetches via SDK/CLI.
+
+Rotation: Automatic Lambda-based rotation.
+
+K8s integration: External Secrets Operator.
+
+Example Kubernetes ExternalSecret:
+
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-secret
+spec:
+  secretStoreRef:
+    name: aws-secrets
+    kind: SecretStore
+  target:
+    name: db-credentials
+  data:
+    - secretKey: password
+      remoteRef:
+        key: prod/db/password
+
+8️⃣ Git branching strategy
+
+GitFlow (classic):
+
+main = production
+
+develop = staging
+
+feature/* → merged to develop
+
+release/* → tested → merged to main
+
+hotfix/* → emergency fix on main
+
+Modern approach: Many teams prefer Trunk-Based (small branches, feature flags).
+
+9️⃣ Logging & Monitoring
+
+Logs: Fluent Bit → ELK/OpenSearch.
+
+Metrics: Prometheus (scrape pods) + Grafana dashboards.
+
+Tracing: OpenTelemetry + Jaeger.
+
+Golden signals: latency, traffic, errors, saturation.
+
+Prometheus scrape config:
+
+scrape_configs:
+- job_name: 'kubernetes-pods'
+  kubernetes_sd_configs:
+  - role: pod
+
+🔟 DevSecOps implementation
+
+In CI/CD:
+
+SAST → SonarQube/CodeQL
+
+Image scan → Trivy
+
+IaC scan → Checkov/OPA
+
+In CD: Admission controllers (Kyverno/Gatekeeper) enforce policies.
+
+In runtime: Falco detects suspicious behavior.
+
+Example: Pipeline fails if image has High/Critical CVEs.
+
+stage('Security Scan') {
+  steps {
+    sh 'trivy image --exit-code 1 myapp:${BUILD_NUMBER}'
+  }
+}
